@@ -20,7 +20,8 @@
 #include "jwwin.h"
 #include <stdlib.h>
 
-#include "joedll.h"
+int PuttyWinMain(HINSTANCE, HINSTANCE, LPSTR, int);
+int jwInitJoe(int, wchar_t**);
 
 int APIENTRY wWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -28,5 +29,14 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
                      int       nCmdShow)
 {
 	UNREFERENCED_PARAMETER(lpCmdLine);
-	return joewinmain(hInstance, hPrevInstance, nCmdShow, __argc, __wargv);
+
+	if (!jwInitJoe(__argc, __wargv))
+	{
+		return PuttyWinMain(hInstance, hPrevInstance, "", nCmdShow);
+	}
+	else
+	{
+		return 1;
+	}
+
 }
