@@ -94,12 +94,13 @@ int jwCreateWake(void);
 HANDLE jwGetWakeEvent(int hwake);
 int jwCreateQueue(int bufsz, int hwake);
 void jwCloseQueue(int qd);
-HANDLE jwInitializeComm(void);
+void jwInitializeComm(void);
 void jwShutdownComm(void);
 struct CommMessage *jwWaitForComm(int *qds, int nqds, int timeout, int *outqueue);
 struct CommMessage *jwRecvComm(int qd);
 void jwSendComm(int qd, int msg, int arg1, int arg2, int arg3, int arg4, void *ptr, size_t sz, const char *data);
 void jwReleaseComm(int qd, struct CommMessage *msg);
+void jwTapQueue(int qd, int tapqd);
 
 int jwRendezvous(int readqd, int writeqd);
 void jwWriteIO(int qd, void *data, size_t size);

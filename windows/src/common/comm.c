@@ -85,6 +85,7 @@ struct CommQueue
 	int			bufferallocs;
 	int			msgallocs;
 	int			hwake;
+	int			tap;
 };
 
 static struct CommQueue *CreateCommQueue(int buffersize, int hwake);
@@ -104,17 +105,6 @@ static HANDLE commmutex;
 
 static struct CommQueue *queues[NQUEUES];
 static HANDLE qhandles[NQHANDLES];
-
-/*
-static struct CommQueue *editorToUi, *uiToEditor;
-
-static HANDLE editorWaitHandle, uiWaitHandle;
-
-#define SideQR(s) ((s) == JW_SIDE_EDITOR ? uiToEditor : editorToUi)
-#define SideQW(s) ((s) == JW_SIDE_EDITOR ? editorToUi : uiToEditor)
-#define SideES(s) ((s) == JW_SIDE_EDITOR ? uiWaitHandle : editorWaitHandle)
-#define SideEW(s) ((s) == JW_SIDE_EDITOR ? editorWaitHandle : uiWaitHandle)
-*/
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////   Thread-safe queue implementation	  //////////////////////////////
@@ -214,6 +204,7 @@ static struct CommQueue *CreateCommQueue(int buffersize, int hwake)
 	result->bufferallocs = 0;
 	result->msgallocs = 0;
 	result->hwake = hwake;
+	result->tap = -1;
 	
 	return result;
 }
@@ -425,6 +416,13 @@ int jwCreateQueue(int bufsz, int hwake)
 	return -1;
 }
 
+void jwTapQueue(int qd, int tapqd)
+{
+	if (queues && queues[qd]) {
+		queues[qd]->tap = tapqd;
+	}
+}
+
 void jwCloseQueue(int qd)
 {
 	/* Acquire lock */
@@ -452,7 +450,7 @@ void jwCloseQueue(int qd)
 	ReleaseMutex(commmutex);
 }
 
-HANDLE jwInitializeComm(void)
+void jwInitializeComm(void)
 {
 	commmutex = CreateMutex(NULL, FALSE, NULL);
 
@@ -461,10 +459,6 @@ HANDLE jwInitializeComm(void)
 
 	jwCreateQueue(EDITOR_TO_UI_BUFSZ, jwCreateWake()); /* 0 */
 	jwCreateQueue(UI_TO_EDITOR_BUFSZ, jwCreateWake()); /* 1 */
-
-	/* UI side is calling this, give it the UI handle.
-	** The editor always goes through jwWaitForEditorComm() */
-	return qhandles[0];
 }
 
 void jwShutdownComm(void)
@@ -607,6 +601,11 @@ void jwSendComm(int qd, int msg, int arg1, int arg2, int arg3, int arg4, void *p
 	
 	EnqueueCommMessage(q, m);
 	SetEvent(qhandles[q->hwake]);
+
+	if (q->tap >= 0) {
+		/* If queue is tapped, send duplicate message to target */
+		jwSendComm(q->tap, msg, arg1, arg2, arg3, arg4, ptr, sz, data);
+	}
 }
 
 void jwReleaseComm(int qd, struct CommMessage *msg)

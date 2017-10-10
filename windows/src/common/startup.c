@@ -224,6 +224,9 @@ int jwInitJoe(int argc, wchar_t **argv)
 
 		/* Random initialization */
 		jwInitializeGlobals();
+
+		/* Initialize Comm interface */
+		jwInitializeComm();
 	}
 
 	return result;

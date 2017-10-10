@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{30DD500F-5D76-48D0-B443-3A091C4BE335}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>testjoe</RootNamespace>
+    <ConfigurationType>
+    </ConfigurationType>
+    <WriteOutputToRoot>true</WriteOutputToRoot>
+    <ConsoleApplication>true</ConsoleApplication>
+  </PropertyGroup>
+  <Import Project="..\..\build\JoeWin.settings.targets" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(JoeSrcDir);$(JoeExternalSrcDir);$(JoeWinCommonSrcDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>MinSpace</Optimization>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\joedll\joedll.vcxproj">
+      <Project>{e4ab405b-0d5c-4c0c-8f2f-274477e65cae}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.c" />
+    <ClCompile Include="relay.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="relay.h" />
+  </ItemGroup>
+  <Import Project="..\..\build\JoeWin.targets" />
+</Project>

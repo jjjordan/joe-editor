@@ -737,7 +737,7 @@ int PuttyWinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 
 #ifdef JOEWIN
 
-    commQueueEvent = jwInitializeComm();
+    commQueueEvent = jwGetWakeEvent(JW_TO_UI);
 
 #endif
 

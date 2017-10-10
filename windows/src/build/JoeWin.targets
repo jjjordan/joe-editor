@@ -13,7 +13,8 @@
 
     <Link>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem Condition="'$(ConsoleApplication)'==''">Windows</SubSystem>
+      <SubSystem Condition="'$(ConsoleApplication)'!=''">Console</SubSystem>
     </Link>
     
     <ResourceCompile>
