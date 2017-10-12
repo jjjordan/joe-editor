@@ -19,20 +19,53 @@
 
 #include "jwwin.h"
 #include <stdlib.h>
+#include <stdio.h>
+#include "jwglobals.h"
 #include "relay.h"
 
 int PuttyWinMain(HINSTANCE, HINSTANCE, LPSTR, int);
 int jwInitJoe(int, wchar_t**);
 
+int initTest(int relayqd);
+
 int wmain(int argc, wchar_t *argv[])
 {
-	if (!jwInitJoe(argc, argv))
-	{
-		initRelay();
-		return PuttyWinMain(GetModuleHandleW(NULL), NULL, "", 1);
-	}
-	else
-	{
+	if (!jwInitJoe(argc, argv)) {
+		int relayqd = initRelay();
+
+		if (relayqd >= 0 && !initTest(relayqd)) {
+			return PuttyWinMain(GetModuleHandleW(NULL), NULL, "", 1);
+		} else {
+			fprintf(stderr, "Failed to initialize testing stuff\n");
+			return 1;
+		}
+	} else {
 		return 1;
 	}
+}
+
+int initTest(int relayqd)
+{
+	struct test_params params;
+	CONSOLE_SCREEN_BUFFER_INFO scrn;
+	char *p;
+
+	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &scrn);
+	params.cols = scrn.srWindow.Right - scrn.srWindow.Left + 1;
+	params.rows = scrn.srWindow.Bottom - scrn.srWindow.Top + 1;
+	
+	p = getenv("JOETEST_PERSONALITY");
+	if (p) {
+		params.personality = p;
+	} else {
+		// Default to the standard
+		params.personality = "joe";
+	}
+
+	params.home = getenv("JOETEST_HOME");
+	params.data = getenv("JOETEST_DATA");
+	params.term = getenv("JOETEST_TERM");
+	params.relayqd = relayqd;
+
+	return jwInitTest(&params);
 }

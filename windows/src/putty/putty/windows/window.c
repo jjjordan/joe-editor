@@ -1388,6 +1388,26 @@ static void enact_pending_netevent(void)
 	    /* Keep it reset.  This should be safe because we're about to do another read. */
 	    ResetEvent(commQueueEvent);
 	}
+
+	/* Relay events from tests */
+	if (jw_relayqd >= 0) {
+	    while ((m = jwRecvComm(jw_relayqd))) {
+		if (m->msg == COMM_WINRESIZE) {
+		    /* The only message we handle special: */
+		    request_resize(term->frontend, m->arg1, m->arg2);
+		}
+
+		if (m->buffer) {
+		    jwSendComm(JW_TO_EDITOR, m->msg, m->arg1, m->arg2, m->arg3, m->arg4, m->ptr, m->buffer->size, m->buffer->buffer);
+		} else {
+		    jwSendComm(JW_TO_EDITOR, m->msg, m->arg1, m->arg2, m->arg3, m->arg4, m->ptr, 0, NULL);
+		}
+
+		jwReleaseComm(jw_relayqd, m);
+
+		/* Rely on the event getting reset elsewhere */
+	    }
+	}
     }
 #endif
     reentering = 0;

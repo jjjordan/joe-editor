@@ -17,7 +17,6 @@
  *  <http://www.gnu.org/licenses/>.
  */
 
-
 #include "jwwin.h"
 
 #define _JOEWIN_DO_GLOBALS
@@ -29,4 +28,7 @@ void jwInitializeGlobals(void)
 	jw_sendOK = 0;
 	jw_initialpalette = NULL;
 	jw_initialbg = jw_initialfg = jw_initialcurbg = jw_initialcurfg = -1;
+	jw_term = "putty";
+	jw_testing = 0;
+	jw_relayqd = -1;
 }

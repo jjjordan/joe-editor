@@ -117,8 +117,14 @@ void jwLoadConfig(Config *cfg)
 	}
 
 	/* Cheat: preset the window x and y coordinates so that JOE doesn't get a resize and kill the copyright banner */
-	jw_initialcols = cfg->width;
-	jw_initialrows = cfg->height;
+	if (!jw_testing) {
+		jw_initialcols = cfg->width;
+		jw_initialrows = cfg->height;
+	} else {
+	    	/* When testing, initial rows/cols will already be set.  Instead we need to merge these into the config. */
+	    	cfg->width = jw_initialcols;
+		cfg->height = jw_initialrows;
+	}
 }
 
 void jwSaveSettings(Config *cfg)

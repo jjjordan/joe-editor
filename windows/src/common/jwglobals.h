@@ -31,16 +31,28 @@ JOEWIN_GLOBAL char **jw_argv;
 JOEWIN_GLOBAL char *jw_joedata;
 JOEWIN_GLOBAL char *jw_joerc;
 JOEWIN_GLOBAL char *jw_home;
+JOEWIN_GLOBAL char *jw_term;
 JOEWIN_GLOBAL wchar_t *jw_personality;
 
 JOEWIN_GLOBAL int jw_initialrows, jw_initialcols;
 JOEWIN_GLOBAL int *jw_initialpalette;
 JOEWIN_GLOBAL int jw_initialfg, jw_initialbg, jw_initialcurfg, jw_initialcurbg;
-JOEWIN_GLOBAL int jw_sendOK;
+JOEWIN_GLOBAL int jw_sendOK, jw_testing, jw_relayqd;
+
+struct test_params {
+	char	*personality;
+	char	*term;
+	char	*home;
+	char	*data;
+	int	rows;
+	int	cols;
+	int	relayqd;
+};
 
 int jwInitJoe(int, wchar_t **);
 HANDLE jwStartJoe(unsigned long *);
 void jwInitializeGlobals(void);
+int jwInitTest(struct test_params *);
 
 void jwexit(int);
 

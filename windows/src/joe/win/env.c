@@ -57,7 +57,7 @@ char* glue_getenv(const char* env)
 	if (!strcmp(env, "HOME")) {
 		return (char*)jw_home;
 	} else if (!strcmp(env, "TERM")) {
-		return "putty";
+		return jw_term;
 	} else if (!strcmp(env, "LANG")) {
 		if (!lang) {
 			char langtmp[LOCALE_NAME_MAX_LENGTH];

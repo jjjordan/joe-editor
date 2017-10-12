@@ -17,4 +17,4 @@
  *  <http://www.gnu.org/licenses/>.
  */
 
-void initRelay(void);
+int initRelay(void);

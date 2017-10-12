@@ -232,6 +232,35 @@ int jwInitJoe(int argc, wchar_t **argv)
 	return result;
 }
 
+int jwInitTest(struct test_params *params)
+{
+	jw_initialcols = params->cols;
+	jw_initialrows = params->rows;
+	jw_relayqd = params->relayqd;
+
+	if (params->personality) {
+		/* Settings will load/save from jw_personality, JOE itself will key off argv */
+		jw_personality = L"testjoe";
+		jw_argv[0] = params->personality;
+	}
+
+	if (params->term) {
+		jw_term = params->term;
+	}
+
+	if (params->home) {
+		jw_home = params->home;
+	}
+
+	if (params->data) {
+		jw_joedata = params->data;
+	}
+
+	jw_testing = 1;
+
+	return 0;
+}
+
 static DWORD WINAPI joethread(LPVOID threadParam)
 {
 	int joe_main(int, char **, char **);
