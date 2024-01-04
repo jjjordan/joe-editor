@@ -27,6 +27,7 @@
 struct queues {
 	int stdinqd;
 	int stdoutqd;
+	HANDLE console;
 };
 
 static DWORD WINAPI readIn(LPVOID threadParam)
@@ -34,40 +35,44 @@ static DWORD WINAPI readIn(LPVOID threadParam)
 	struct queues *q = (struct queues *) threadParam;
 	int qd = q->stdinqd;
 	HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+	HANDLE conin = CreateFile("CONIN$", GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	HANDLE conout = CreateFile("CONOUT$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0);
 	DWORD lastCount = 0;
 	PINPUT_RECORD events = NULL;
 	char buffer[UI_TO_EDITOR_IOSZ];
+	HANDLE handles[] = { conin, conout, hStdin };
 
 	for (;;) {
 		DWORD count;
 		BOOL hasKeys = FALSE;
 
-		WaitForSingleObject(hStdin, INFINITE);
+		WaitForMultipleObjects(3, handles, FALSE, INFINITE);
 
 		/* Check low-level IO for window resize events. */
-		GetNumberOfConsoleInputEvents(hStdin, &count);
-		if (count > lastCount) {
-			lastCount = count;
-			if (events) {
-				free(events);
+		if (GetNumberOfConsoleInputEvents(conin, &count)) {
+			if (count > lastCount) {
+				lastCount = count;
+				if (events) {
+					free(events);
+				}
+
+				events = (PINPUT_RECORD)malloc(count * sizeof(INPUT_RECORD));
 			}
 
-			events = (PINPUT_RECORD)malloc(count * sizeof(INPUT_RECORD));
-		}
-
-		if (count > 0) {
-			int i;
+			if (count > 0) {
+				int i;
 			
-			PeekConsoleInput(hStdin, events, lastCount, &count);
-			for (i = 0; i < count; i++) {
-				if (events[i].EventType == WINDOW_BUFFER_SIZE_EVENT) {
-					CONSOLE_SCREEN_BUFFER_INFO scrn;
-					char *p;
+				PeekConsoleInput(hStdin, events, lastCount, &count);
+				for (i = 0; i < count; i++) {
+					if (events[i].EventType == WINDOW_BUFFER_SIZE_EVENT) {
+						CONSOLE_SCREEN_BUFFER_INFO scrn;
+						char *p;
 
-					GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &scrn);
-					jwSendComm2(qd, COMM_WINRESIZE, (scrn.srWindow.Right - scrn.srWindow.Left) + 1, (scrn.srWindow.Bottom - scrn.srWindow.Top) + 1);
-				} else if (events[i].EventType == KEY_EVENT) {
-					hasKeys = TRUE;
+						GetConsoleScreenBufferInfo(conout, &scrn);
+						jwSendComm2(qd, COMM_WINRESIZE, (scrn.srWindow.Right - scrn.srWindow.Left) + 1, (scrn.srWindow.Bottom - scrn.srWindow.Top) + 1);
+					} else if (events[i].EventType == KEY_EVENT) {
+						hasKeys = TRUE;
+					}
 				}
 			}
 		}
@@ -110,7 +115,8 @@ static DWORD WINAPI writeOut(LPVOID threadParam)
 
 		if (JWISIO(msg)) {
 			size_t sz = jwReadIO(msg, buff);
-			WriteFile(hStdout, buff, sz, NULL, NULL);
+			DWORD written; /* Looks innocuous, but WriteFile will AV without it. */
+			WriteFile(hStdout, buff, sz, &written, NULL);
 		}
 
 		jwReleaseComm(qd, msg);
@@ -120,8 +126,8 @@ static DWORD WINAPI writeOut(LPVOID threadParam)
 int initRelay(void)
 {
 	struct queues *q = (struct queues *) malloc(sizeof(struct queues));
-	HANDLE hConsole = GetStdHandle(STD_INPUT_HANDLE);
 	DWORD mode;
+	HANDLE hConsole;
 
 	q->stdoutqd = jwCreateQueue(EDITOR_TO_UI_BUFSZ, jwCreateWake());
 	q->stdinqd = jwCreateQueue(UI_TO_EDITOR_BUFSZ, JW_TO_UI); /* Wake the UI so it can relay the message for us. */
@@ -130,10 +136,16 @@ int initRelay(void)
 	CreateThread(NULL, 0, writeOut, (LPVOID)q, 0, NULL);
 
 	/* Set up console */
+	hConsole = CreateFile("CONIN$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	if (hConsole == INVALID_HANDLE_VALUE) {
+		return 1;
+	}
+
 	GetConsoleMode(hConsole, &mode);
 	mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
 	mode |= ENABLE_WINDOW_INPUT;
 	SetConsoleMode(hConsole, mode);
+	CloseHandle(hConsole);
 
 	return q->stdinqd;
 }

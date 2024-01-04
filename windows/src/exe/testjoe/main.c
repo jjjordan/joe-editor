@@ -31,10 +31,14 @@ int initTest(int relayqd);
 int wmain(int argc, wchar_t *argv[])
 {
 	if (!jwInitJoe(argc, argv)) {
-		int relayqd = initRelay();
+		int relayqd;
 
+		relayqd = initRelay();
 		if (relayqd >= 0 && !initTest(relayqd)) {
-			return PuttyWinMain(GetModuleHandleW(NULL), NULL, "", 1);
+			char *p = getenv("JOETEST_SHOW");
+			int show = p ? atoi(p) : 1;
+
+			return PuttyWinMain(GetModuleHandleW(NULL), NULL, "", show);
 		} else {
 			fprintf(stderr, "Failed to initialize testing stuff\n");
 			return 1;
@@ -47,10 +51,16 @@ int wmain(int argc, wchar_t *argv[])
 int initTest(int relayqd)
 {
 	struct test_params params;
+	HANDLE hConsole;
 	CONSOLE_SCREEN_BUFFER_INFO scrn;
 	char *p;
 
-	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &scrn);
+	hConsole = CreateFile("CONOUT$", GENERIC_WRITE | GENERIC_READ, FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0);
+	if (hConsole == INVALID_HANDLE_VALUE) {
+		return 1;
+	}
+
+	GetConsoleScreenBufferInfo(hConsole, &scrn);
 	params.cols = scrn.srWindow.Right - scrn.srWindow.Left + 1;
 	params.rows = scrn.srWindow.Bottom - scrn.srWindow.Top + 1;
 	

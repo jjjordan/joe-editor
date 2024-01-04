@@ -68,7 +68,7 @@ class JoeTestBase(unittest.TestCase):
         """Starts the editor"""
         self.workdir.setup()
         self.homedir.setup()
-        self.joe = controller.startJoe("../joe/joe", self.startup)
+        self.joe = controller.startJoe(self.startup)
         if waitbanner:
             banner = self.config.globalopts.xmsg
             banner = re.sub(r'\\.', '', banner[0:banner.index('%')])

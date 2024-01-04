@@ -1,0 +1,14 @@
+LIBRARY JOEWIN
+EXPORTS
+	jwInitJoe	@1
+	PuttyWinMain	@2
+	jwInitTest	@3
+
+	jwCreateQueue	@4
+	jwCreateWake	@5
+	jwWaitForComm	@6
+	jwSendComm	@7
+	jwReadIO	@8
+	jwWriteIO	@9
+	jwReleaseComm	@10
+	jwTapQueue	@11
