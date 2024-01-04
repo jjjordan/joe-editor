@@ -20,7 +20,7 @@
 
  Допустимые цвета
    bold (яркость) inverse (инверсия) blink (мерцание) 
-   dim (полуяркость) underline (подчеркивание)
+   dim (полуяркость) underline (подчеркивание) italic (?????)
    white (белый) cyan (бирюзовый) magenta (фиолетовый) blue (синий) 
    yellow (желтый) green (зеленый) red (красный) black (черный)
  для фона
@@ -59,6 +59,8 @@
 		в обычной 8-битной кодировке.
 
  -mid		При скроллинге выполнять центрирование курсора
+ -left nn	Amount to jump left when scrolling is necessary (-1 for 1/4 width)
+ -right nn	Amount to jump right when scrolling is necessary (-1 for 1/4 width)
 
  -marking	Подсвечивать текст между началом блока и курсором 
                 (используйте вместе с -lightoff)
@@ -76,6 +78,8 @@
  -nocurdir	Не вставлять текущую директорию в запрос файла
 
  -nobackups	Если не желаете, чтобы создавались резервные файлы
+
+ -nodeadjoe	If you don't want DEADJOE files to be created
 
  -break_hardlinks
 		Удалять файл перед записью, для разрыва жестких ссылок
@@ -113,6 +117,8 @@
 
 -nonotice	Не выводить copyright
 
+ -noexmsg	Disable exiting message ("File not changed so no updated needed")
+
  -noxon		Выключить обработку ^S/^Q
 
  -orphan	Положить дополнительные файлы, указанные в ком.строке,
@@ -127,12 +133,15 @@
 
  -columns nnn	Установить кол-во колонок на экране
 
- -help		Включать экран подсказки при запуске
+ -helpon	Включать экран подсказки при запуске
 
  -skiptop nnn	Не использовать верхние nnn строк экрана
 
 -notite         Не посылать строки инициализации и терминации терминала:
 		предотвращает восстановление экрана при выходе.
+
+ -nolinefeeds	Prevent sending linefeeds to preserve screen history in terminal
+                emulator's scroll-back buffer.
 
  -usetabs       Использовать табуляторы для оптимизации экранного вывода
 
@@ -146,6 +155,8 @@
 -guess_non_utf8	Allow guess of non-UTF-8 file encoding in a UTF-8 locale.
 
  -guess_utf8	Allow guess of UTF-8 file encoding in non-UTF-8 locale.
+
+-guess_utf16	Allow guess of UTF-16 encoding
 
 -guess_crlf     Автоопределять файлы MS-DOS и соотв. устанавливать -crlf
 
@@ -202,6 +213,9 @@
 -search_prompting
 		Запрашивать образец для последующих поисков.
 
+ -regex		Search uses standard regular expression format (otherwise it uses
+		JOE format where all special characters have to be escaped).
+
  Строка определения строки состояния. -lmsg определяет часть, выровненную 
  влево, а -rmsg - вправо. Первый символ строки -rmsg - символ для заполнения 
  фона. В строках могут использоваться следующие управляющие последовательности:
@@ -237,9 +251,18 @@
   \b  Повышенная яркость
   \d  Пониженная яркость
   \f  Мерцание
+  \l  ?????
 
--lmsg \i%k%T%W%I%X %n %m%y%R %M
--rmsg  %S Стр %r Поз %c %t  Подсказка - по F1
+-lmsg \i%k%T%W%I%X %n %m%y%R %M %x
+-rmsg  %S Стр %4r Поз %3c %t  Подсказка - по F1
+-smsg ** Line %r Col %c Offset %o(0x%O) %e %a(0x%A) Width %w ** 
+-zmsg ** Line %r Col %c Offset %o(0x%O) ** 
+-xmsg \i Joe's Own Editor %v (%b) ** Type \bCtrl-K Q\b to exit or \bCtrl-K H\b for help **\i
+
+ Key sequence hints which are displayed in various prompts.
+-aborthint ^C
+-helphint ^K H
+
 
  ВТОРАЯ СЕКЦИЯ: Установка локальных опций в зависимости от имени файла:
 
@@ -258,6 +281,9 @@
 
 	-cpara >#!;*/%
 				Characters which can indent paragraphs.
+
+	-cnotpara .
+				Characters which begin non-paragraph lines.
 
 	-encoding name
 				Установить кодировку файла (например: utf-8, iso-8859-15)
@@ -349,6 +375,8 @@
 
 	These define the language syntax for ^G (goto matching delimiter):
 
+	-highlighter_context	Use the highlighter context for ^G
+
 	-single_quoted		Текст внутри '  ' следует игнорировать (это не
 				очень хорошо для обычного текста, т.к. ' в нем
 				может использоваться в качестве апострофа)
@@ -369,7 +397,7 @@
 
  Локальные опции по умолчанию
 -highlight
--istep 2
+-istep 4
 
 
  Используйте это макро (поместите в первую колонку) чтобы заставить joe вызывать 
@@ -383,7 +411,9 @@
 
  SECOND and 1/2 SECTION: Option menu layout
 
-	:defmenu name	Defines a menu.
+	:defmenu name [macro]
+			Defines a menu.
+			The macro here is executed when the user hits backspace.
 
 	macro string comment
 			A menu entry.  Macro is any JOE macro- see "Macros:"
@@ -396,28 +426,33 @@
 
 :defmenu root
 mode,"overwrite",rtn	T Overtype %Zoverwrite%
-mode,"hex",rtn	% % Hex edit mode
+mode,"hex",rtn	' Hex edit mode
 mode,"autoindent",rtn	I Autoindent %Zautoindent%
 mode,"wordwrap",rtn	W Word wrap %Zwordwrap%
 mode,"tab",rtn	D Tab width %Ztab%
 mode,"lmargin",rtn	L Left margin %Zlmargin%
 mode,"rmargin",rtn	R Right margin %Zrmargin%
-mode,"square",rtn	X Rectangle mode %Zsquare%
+mode,"square",rtn	X Column mode %Zsquare%
 mode,"indentc",rtn	% % Indent char %Zindentc%
 mode,"istep",rtn	% % Indent step %Zistep%
+menu,"indent",rtn	= Indent select
 mode,"highlight",rtn	H Highlighting %Zhighlight%
-mode,"crlf",rtn	Z CR-LF (MS-DOS) %Zcrlf%
+mode,"crlf",rtn	Z CR-LF/MS-DOS %Zcrlf%
 mode,"linums",rtn	N Line numbers %Zlinums%
+mode,"hiline",rtn	U Highlight line %Zhiline%
 mode,"beep",rtn	B Beep %Zbeep%
 mode,"rdonly",rtn	O Read only %Zrdonly%
 mode,"syntax",rtn	Y Syntax
+mode,"colors",rtn	S Color scheme
 mode,"encoding",rtn	E Encoding
 mode,"asis",rtn	% % Meta chars as-is
 mode,"language",rtn	V Language
 mode,"picture",rtn	P picture %Zpicture%
+mode,"type",rtn		F File type [%Ztype%]
+mode,"title",rtn	C Context %Ztitle%
 menu,"more-options",rtn	  % % More options...
 
-:defmenu more-options
+:defmenu more-options menu,"root",rtn
 menu,"^G",rtn	% % ^G options
 menu,"search",rtn	% % search options
 menu,"paragraph",rtn	% % paragraph options
@@ -428,13 +463,24 @@ menu,"cursor",rtn	% % cursor options
 menu,"marking",rtn	% % marking options
 menu,"tab",rtn	% % tab/indent options
 
-:defmenu menu
+:defmenu indent menu,"root",rtn
+mode,"istep",rtn,"1",rtn,mode,"indentc",rtn,"32",rtn,msg,"Indent step = 1, Indent character = 32",rtn	1 Space
+mode,"istep",rtn,"2",rtn,mode,"indentc",rtn,"32",rtn,msg,"Indent step = 2, Indent character = 32",rtn	2 Spaces
+mode,"istep",rtn,"3",rtn,mode,"indentc",rtn,"32",rtn,msg,"Indent step = 3, Indent character = 32",rtn	3 Spaces
+mode,"istep",rtn,"4",rtn,mode,"indentc",rtn,"32",rtn,msg,"Indent step = 4, Indent character = 32",rtn	4 Spaces
+mode,"istep",rtn,"5",rtn,mode,"indentc",rtn,"32",rtn,msg,"Indent step = 5, Indent character = 32",rtn	5 Spaces
+mode,"istep",rtn,"8",rtn,mode,"indentc",rtn,"32",rtn,msg,"Indent step = 8, Indent character = 32",rtn	8 Spaces
+mode,"istep",rtn,"10",rtn,mode,"indentc",rtn,"32",rtn,msg,"Indent step = 10, Indent character = 32",rtn	0 Ten
+mode,"istep",rtn,"1",rtn,mode,"indentc",rtn,"9",rtn,msg,"Indent step = 1, Indent character = 9",rtn	T Tab
+
+:defmenu menu menu,"more-options",rtn
 mode,"menu_explorer",rtn	% % Menu explorer %Zmenu_explorer%
 mode,"menu_above",rtn	% % Menu position %Zmenu_above%
 mode,"menu_jump",rtn	% % Jump into menu %Zmenu_jump%
 mode,"transpose",rtn	% % Transpose menus %Ztranspose%
 
-:defmenu ^G
+:defmenu ^G menu,"more-options",rtn
+mode,"highlighter_context",rtn	% % ^G uses highlighter context %Zhighlighter_context%
 mode,"single_quoted",rtn	% % ^G ignores '...' %Zsingle_quoted%
 mode,"no_double_quoted",rtn	% % ^G no ignore "..." %Zno_double_quoted%
 mode,"c_comment",rtn	% % ^G ignores /*...*/ %Zc_comment%
@@ -445,29 +491,32 @@ mode,"semi_comment",rtn	% % ^G ignores ;... %Zsemi_comment%
 mode,"tex_comment",rtn % % ^G ignores %%... %Ztex_comment%
 mode,"text_delimiters",rtn % % Text delimiters %Ztext_delimiters%
 
-:defmenu search
+:defmenu search menu,"more-options",rtn
 mode,"icase",rtn	% % Case insensitivity %Zicase%
 mode,"wrap",rtn	% % Search wraps %Zwrap%
 mode,"search_prompting",rtn	% % Search prompting %Zsearch_prompting%
 mode,"csmode",rtn	% % Continued search %Zcsmode%
 
-:defmenu paragraph
+:defmenu paragraph menu,"more-options",rtn
 mode,"french",rtn	% % French spacing %Zfrench%
 mode,"flowed",rtn	% % Flowed text %Zflowed%
 mode,"cpara",rtn	% % Paragraph indent chars %Zcpara%
+mode,"cnotpara",rtn	% % Not-paragraph chars %Zcnotpara%
 
-:defmenu file
+:defmenu file menu,"more-options",rtn
 mode,"restore",rtn	% % Restore cursor %Zrestore%
 mode,"guess_crlf",rtn	% % Auto detect CR-LF %Zguess_crlf%
 mode,"guess_indent",rtn	% % Guess indent %Zguess_indent%
 mode,"guess_non_utf8",rtn	% % Guess non-UTF-8 %Zguess_non_utf8%
 mode,"guess_utf8",rtn	% % Guess UTF-8 %Zguess_utf8%
+mode,"guess_utf16",rtn	% % Guess UTF-16 %Zguess_utf16%
 mode,"force",rtn	% % Force last NL %Zforce%
 mode,"nobackup",rtn	% % No backup %Znobackup%
 
-:defmenu global
+:defmenu global menu,"more-options",rtn
 mode,"nolocks",rtn	% % Disable locks %Znolocks%
 mode,"nobackups",rtn	% % Disable backups %Znobackups%
+mode,"nodeadjoe",rtn	% % Disable DEADJOE %Znodeadjoe%
 mode,"nomodcheck",rtn	% % Disable mtime check %Znomodcheck%
 mode,"nocurdir",rtn	% % Disable current dir %Znocurdir%
 mode,"exask",rtn	% % Exit ask %Zexask%
@@ -479,18 +528,20 @@ mode,"joe_state",rtn	% % Joe_state file %Zjoe_state%
 mode,"undo_keep",rtn	% % No. undo records %Zundo_keep%
 mode,"backpath",rtn	% % Path to backup files %Zbackpath%
 
-:defmenu cursor
+:defmenu cursor menu,"more-options",rtn
 mode,"pg",rtn	% % No. PgUp/PgDn lines %Zpg%
 mode,"mid",rtn	C Center on scroll %Zmid%
+mode,"left",rtn	L Columns to scroll left %Zleft%
+mode,"right",rtn R Columns to scroll right %Zright%
 mode,"floatmouse",rtn	% % Click past end %Zfloatmouse%
 mode,"rtbutton",rtn	% % Right button %Zrtbutton%
 
-:defmenu marking
+:defmenu marking menu,"more-options",rtn
 mode,"autoswap",rtn	% % Autoswap mode %Zautoswap%
 mode,"marking",rtn	% % Marking %Zmarking%
 mode,"lightoff",rtn	% % Auto unmask %Zlightoff%
 
-:defmenu tab
+:defmenu tab menu,"more-options",rtn
 mode,"smarthome",rtn	% % Smart home key %Zsmarthome%
 mode,"smartbacks",rtn	% % Smart backspace %Zsmartbacks%
 mode,"indentfirst",rtn	% % To indent first %Zindentfirst%
@@ -504,6 +555,7 @@ mode,"spaces",rtn	% % No tabs %Zspaces%
  Используйте \b для вкл/выкл повышенной яркости
  Используйте \d для вкл/выкл пониженной яркости
  Используйте \f для вкл/выкл мерцания
+ Используйте \l для вкл/выкл ?????
  Используйте \| для вставки пружинки: все пружинки в строке устанавливаются 
  на одинаковую ширину, чтобы строка растягивалась на всю ширину экрана (если
  кратность не получается и остается N пробелов, то каждая из N пружинок справа
@@ -541,7 +593,7 @@ mode,"spaces",rtn	% % No tabs %Zspaces%
 \i \i\b\|^K]\b     Конец  \|\b^K\\\b Повтор      \|\b^[Z\b Вниз  \|\b^[!\b Команда \|\b^[K\b To ^KK \|\b^[S\b Вперед   \|\i \i
 \i \i\b\|^K 0-9\b  Выполн.\|\b^[M\b Калькулятор \|\b^K<\b Влево \|\uQUOTE\u       \|\uУДАЛЕНИЕ\u   \|\uМЕТКИ\u        \|\i \i
 \i \i\b\|^K?\b     Query  \|\b^KA\b Центриров.  \|\b^K>\b Вправо\|\b`\b  Ctrl-    \|\b^[Y\b отмена \|\b^[ 0-9\b Goto  \|\i \i
-\i \i\b\|^[D\b     Дамп   \|\b^[H\b Сообщение   \|          \|\b^\\\b Meta-    \|\b^[O\b стр.<  \|\b^[^[\b Установ. \|\i \i
+\i \i\b\|^[D\b     Дамп   \|\b^[H\b Сообщение   \|          \|\b^\\\b Meta-    \|\b^[O\b стр.<  \|\b^[^[\b Установ.\i \|\i
 }
 
 {Programs
@@ -554,35 +606,43 @@ mode,"spaces",rtn	% % No tabs %Zspaces%
 }
 
 {Search
-\i   Окно ПОДСКАЗКИ - \|выключить по F1    пред.экран - ^P     след. экран ^N      \i
-\i \iСпециальные последовательности поиска:                                       \|\i \i
-\i \i    \b\\^  \\$\b  начало/конец строки          \b\\?\b     любой одиночный символ       \|\i \i
-\i \i    \b\\<  \\>\b  начало/конец слова           \b\\*\b     0 или более символов         \|\i \i
-\i \i    \b\\c\b     сбалансированное выражение C  \b\\\\\b     символ \\                     \|\i \i
-\i \i    \b\\[..]\b  один из элементов множества   \b\\n\b     перевод строки               \|\i \i
-\i \i    \b\\+\b     0 или более символов, следующих за \\+                             \|\i \i
-\i \iСпециальные последовательности замещения:                                    \|\i \i
-\i \i    \b\\&\b     замещать текстом, соответствующим строке поиска                   \|\i \i
-\i \i    \b\\0 - 9\b замещать текстом, соотв. n-ному  \b\\*\b, \b\\?\b, \b\\c\b, \b\\+\b, или \b\\[..]\b        \|\i \i
-\i \i    \b\\\\\b     замещать символом \\           \b\\n\b     замещать переводом строки    \|\i \i
+\i   Help Screen    \|turn off with ^KH    prev. screen ^[,    next screen ^[.     \i
+\i \iSearch sequences:                                                            \|\i \i
+\i \i    \\^  \\$  matches beg./end of line       \\.     match any single char      \|\i \i
+\i \i    \\<  \\>  matches beg./end of word       \\!     match char or expression   \|\i \i
+\i \i    \\(  \\)  grouping                       \\|     match left or right         \|\i \i
+\i \i    \\[a-z]  matches one of a set                                             \|\i \i
+\i \i    \\{1,3}  match 1 - 3 occurrences        \\?     match 0 or 1 occurrence     \|\i \i
+\i \i    \\+      match 1 or more occurrences    \\*     match 0 or more occurrences \|\i \i
+\i \iReplace sequences:                                                           \|\i \i
+\i \i    \\&      replaced with entire match     \\1 - 9 replaced with Nth group   \|\i \i
+\i \i    \\u \\l   convert next to upper/lower    \\U \\L  case convert until \\E     \|\i \i
+}
+
+{Escape sequences
+\i   Help Screen    \|turn off with ^KH    prev. screen ^[,    next screen ^[.     \i
+\i \iEscape sequences: \\x{10fff}  Unicode code point   \\p{Ll}  Unicode category \|\i \i
+\i \i    \\i / \\I  Identifier start      \\t  tab          \\e  escape               \|\i \i
+\i \i    \\c / \\C  Identifier continue   \\n  newline      \\r  carriage return      \|\i \i
+\i \i    \\d / \\D  Digit / Not a digit   \\b  backspace  \\xFF  hex character        \|\i \i
+\i \i    \\w / \\W  Word / Not a word     \\a  alert      \\377  octal character      \|\i \i
+\i \i    \\s / \\S  Space / Not a space   \\f  formfeed     \\\\  backslash            \|\i \i
 }
 
 {SearchOptions
-\i   Окно ПОДСКАЗКИ - \|выключить по F1    пред.экран - ^P     след. экран ^N      \i
+\i   Help Screen    \|turn off with ^KH    prev. screen ^[,    next screen ^[.     \i
 \i \iSearch options:                                                              \|\i \i
-\i \i   r Replace                                                                 \|\i \i
-\i \i   k Restrict search to highlighted block, which can be rectangular          \|\i \i
-\i \i   b Search backward instead of forward                                      \|\i \i
-\i \i   i Ignore case                                                             \|\i \i
-\i \i   a Search across all loaded files                                          \|\i \i
-\i \i   e Search across all files in Grep or Compile error list                   \|\i \i
-\i \i   w Wrap to beginning of file for this search                               \|\i \i
-\i \i   n Do not wrap to beginning of file for this search                        \|\i \i
-\i \i   nnn Perform exaclty nnn replacements                                      \|\i \i
+\i \i     r Replace      k Restrict search to highlighted block                   \|\i \i
+\i \i     i Ignore case  b Search backwards instead of forwards                   \|\i \i
+\i \i                    a Search across all loaded files                         \|\i \i
+\i \i                    e Search across all files in Grep or Compile error list  \|\i \i
+\i \i w / n  Allow / prevent wrap to start of file                                \|\i \i
+\i \i x / y  Search text is standard format / JOE format regular expression       \|\i \i
+\i \i   nnn  Perform exactly nnn replacements                                     \|\i \i
 }
 
 {Math
-\i   Окно ПОДСКАЗКИ - \|выключить по F1    пред.экран - ^P     след. экран ^N      \i
+\i   Help Screen    \|turn off with ^KH    prev. screen ^[,    next screen ^[.     \i
 \i \i \uCOMMANDS\u (hit ESC m for math)  \uFUNCTIONS\u                                    \|\i \i
 \i \i     hex hex display mode       sin cos tab asin acos atan                   \|\i \i
 \i \i     dec decimal mode           sinh cosh tanh asinh acosh atanh             \|\i \i
@@ -640,6 +700,8 @@ mode,"spaces",rtn	% % No tabs %Zspaces%
 	:query		For single-character query lines
 	:querya		Singe-character query for quote
 	:querysr	Search & Replace single-character query
+	:shell		For shell windows
+	:vtshell	For terminal emulator windows
 
  Прочие секции также могут быть определены для организационных целей или
  для использования с ключом '-keymap'.
@@ -694,11 +756,14 @@ mode,"spaces",rtn	% % No tabs %Zspaces%
  к началу следующей строки.
 
 :windows		Общие клавиши для всех окон
-type		^@ TO �		Напечатать символ
+type		U+0 TO U+10FFFF
 abort		^C		Аварийное прерывание
-abort		^K Q
-abort		^K ^Q
-abort		^K q
+ abort		^K Q
+ abort		^K ^Q
+ abort		^K q
+querysave,query,killjoe	^K Q	Query to save files, then exit
+querysave,query,killjoe	^K ^Q
+querysave,query,killjoe	^K q
 arg		^K \		Повтор следующей команды 
 explode		^K I		Показывать все окна или только одно
 explode		^K ^I
@@ -758,6 +823,8 @@ defm2drag	M2DRAG		Отметить последовательность слов
 defm3down	M3DOWN		Отметить строку в позиции мыши
 defm3up		M3UP
 defm3drag	M3DRAG		Отметить последовательность строк
+defmiddleup	MIDDLEUP
+defmiddledown	MIDDLEDOWN	Insert text
 
 xtmouse		^[ [ M		Начало обработки событий мыши в xterm
 extmouse	^[ [ <		Introduces an extended xterm mouse event (TODO: translate to Russian)
@@ -788,8 +855,42 @@ if,"char==65",then,"it's an A",else,"it's not an a",endif	^[ q
 
 :def grep_find scratch,"* Grep Log *",rtn,bof,markb,eof," ",markk,blkdel,grep
 
+ Man page
+
+:def man scratch,"* Man Page *",rtn,bof,markb,eof," ",markk,blkdel," ",ltarw,run,"man -P cat -S 2:3 "
+
+ Shell windows
+ We load the already existing Startup Log first so that Shell does not inherit the current directory.
+
+:def shell1 scratch_push,"* Startup Log *",rtn,scratch_push,"* Shell 1 *",rtn,vtbknd!,eof
+:def shell2 scratch_push,"* Startup Log *",rtn,scratch_push,"* Shell 2 *",rtn,vtbknd!,eof
+:def shell3 scratch_push,"* Startup Log *",rtn,scratch_push,"* Shell 3 *",rtn,vtbknd!,eof
+:def shell4 scratch_push,"* Startup Log *",rtn,scratch_push,"* Shell 4 *",rtn,vtbknd!,eof
+
+ Macros allowed in shell window commands
+:def shell_clear psh,bof,markb,eof,markk,blkdel
+:def shell_parse parserr
+:def shell_gparse gparse
+:def shell_release release
+:def shell_math maths
+:def shell_typemath txt,math,"ins",rtn,rtn,txt,"\r",rtn
+:def shell_rtn rtn
+:def shell_edit edit
+:def shell_dellin dellin
+:def shell_cd cd
+:def shell_pop popabort
+:def shell_markb markb
+:def shell_markk markk
+
+ Split window version
+ :def shell1 if,"is_shell==0",then,tw1,mfit,endif,scratch,"* Shell 1 *",rtn,vtbknd!,eof
+ :def shell2 if,"is_shell==0",then,tw1,mfit,endif,scratch,"* Shell 2 *",rtn,vtbknd!,eof
+ :def shell3 if,"is_shell==0",then,tw1,mfit,endif,scratch,"* Shell 3 *",rtn,vtbknd!,eof
+ :def shell4 if,"is_shell==0",then,tw1,mfit,endif,scratch,"* Shell 4 *",rtn,vtbknd!,eof
+
 paste			^[ [ 2 0 2 ~		Base64 paste (obsolete) ???
 brpaste			^[ [ 2 0 0 ~		Bracketed paste
+brpaste_done		^[ [ 2 0 1 ~		Bracketed paste done
 rtarw,ltarw,begin_marking,rtarw,toggle_marking	^[ [ 1 ; 5 C    Mark right Xterm
 rtarw,ltarw,begin_marking,rtarw,toggle_marking	^[ [ 5 C        Mark right Gnome-terminal
  rtarw,ltarw,begin_marking,rtarw,toggle_marking	^[ O C		Mark right Putty Ctrl-rtarw
@@ -933,7 +1034,9 @@ center		^K A		Центрировать строку
 center		^K ^A
 center		^K a
 crawll		^K <		Pan left
+crawll		^[ <		Pan left
 crawlr		^K >		Pan right
+crawlr		^[ >		Pan right
 delch		.kD		Удалить символ
 delch		^D
 deleol		^J		Удалить до конца строки
@@ -1037,6 +1140,22 @@ undo		^_		Отменить изменение
 uparw		.ku		Вверх
 uparw		^[ O A
 uparw		^[ [ A
+shell1		^[ [ 1 1 ~
+shell1		^[ O P
+shell1		^[ [ [ A
+shell1		.k1
+shell2		^[ [ 1 2 ~
+shell2		^[ O Q
+shell2		^[ [ [ B
+shell2		.k2
+shell3		^[ [ 1 3 ~
+shell3		^[ O R
+shell3		^[ [ [ C
+shell3		.k3
+shell4		^[ [ 1 4 ~
+shell4		^[ O S
+shell4		^[ [ [ D
+shell4		.k4
 
 :prompt			Окна запроса
 :inherit main
@@ -1103,7 +1222,35 @@ defm2down	M2DOWN		Hits return key
 :inherit windows
 
 :querya			Single-key query window for quoting
-type		^@ TO �
+type		U+0 TO U+10FFFF
 
 :querysr		Search & replace query window
-type		^@ TO �
+type		U+0 TO U+10FFFF
+
+:shell			Input to shell windows
+:inherit main
+""		^C		Abort
+""		^D		Eof
+"\t"		^I		Tab
+""		^H		Backspace
+"\r"		^M		Return
+""		^?		Backspace
+
+:vtshell		Input to ANSI shell windows
+:inherit main
+"[A"		 [ A
+"[A"		.ku
+"[B"		 [ B
+"[B"		.kd
+"[C"		 [ C
+"[C"		.kr
+"[D"		 [ D
+"[D"		.kl
+""		^A		BOL for bash
+""		^C		Abort
+""		^D		Eof
+""		^E		EOL for bash
+"\t"		^I		Tab
+""		^H		Backspace
+"\r"		^M		Return
+""		^?		Backspace

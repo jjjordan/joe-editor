@@ -773,12 +773,12 @@ mode,"spaces",rtn	% % No tabs %Zspaces%
 :windows		Bindings common to all windows
 type		U+0 TO U+10FFFF
 abort		^C		Abort window
- abort		^K Q
- abort		^K ^Q
- abort		^K q
-querysave,query,killjoe	^K Q	Query to save files, then exit
-querysave,query,killjoe	^K ^Q
-querysave,query,killjoe	^K q
+abort		^K Q
+abort		^K ^Q
+abort		^K q
+ querysave,query,killjoe	^K Q	Query to save files, then exit
+ querysave,query,killjoe	^K ^Q
+ querysave,query,killjoe	^K q
 arg		^K \		Repeat next command
 explode		^K I		Show all windows or show only one window
 explode		^K ^I
