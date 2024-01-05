@@ -562,12 +562,32 @@ int ttcheck()
 
 /* Flush output and check for type ahead */
 
+FILE *conlog = NULL;
+int logopen = 0;
+
 int ttflsh(void)
 {
 	/* Flush output */
 	if (obufp) {
 		long usec = obufp * upc;	/* No. usecs this write should take */
  
+		if (!logopen) {
+			const char *setting = getenv("CONLOG");
+			if (setting && !strcmp(setting, "1")) {
+				conlog = fopen("/home/jj/joecon.log", "wb");
+			}
+			logopen = 1;
+		}
+
+		if (conlog) {
+			fprintf(conlog, "*** %d bytes follow:", obufp);
+			fwrite(obuf, 1, obufp, conlog);
+			fprintf(conlog, "\n");
+			fflush(conlog);
+		}
+
+
+
 #ifdef HAVE_SETITIMER
 		if (usec >= 50000 && tty_baud < 9600) {
 			struct itimerval a, b;
