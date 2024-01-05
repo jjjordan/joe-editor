@@ -81,7 +81,7 @@ void genexmsg(BW *bw, int saved, const char *name)
 		} else {
 			m = vsfmt(NULL, 0, joe_gettext(_("File %s not saved")), name);
 		}
-	} else if (bw->b->changed && bw->b->count == 1) {
+	} else if (bw->b->changed /* && bw->b->count == 1 */) {
 		m = vsfmt(NULL, 0, joe_gettext(_("File %s not saved")), s);
 	} else if (saved) {
 		m = vsfmt(NULL, 0, joe_gettext(_("File %s saved")), s);
@@ -140,7 +140,7 @@ int usys(W *w, int k)
 	BW *bw;
 	WIND_BW(bw, w);
 	
-	char *s = ask(w, joe_gettext(_("System (%{abort} to abort): ")), NULL, NULL, utypebw, bw->b->o.charmap, 1, 0, NULL);
+	char *s = ask(w, joe_gettext(_("System (%{abort} to abort): ")), NULL, NULL, utypebw, bw->b->o.charmap, PWFLAG_COMMAND, 0, NULL);
 	if (s) {
 		int rtn;
 		nescape(w->t->t);
@@ -247,7 +247,7 @@ static int backup(BW *bw)
 
 		if (backpath) {
 			char *t = vsncpy(NULL,0,sz(backpath));
-			t = canonical(t);
+			t = canonical(t, CANFLAG_NORESTART);
 			name = vsfmt(name, 0, "%s/%s", t, namepart(tmp, dequote(bw->b->name)));
 		} else {
 			name = vsfmt(name, 0, "%s", dequote(bw->b->name));
@@ -273,7 +273,7 @@ static int backup(BW *bw)
 		}
 		if (backpath) {
 			char *t = vsncpy(NULL, 0, sz(backpath));
-			t = canonical(t);
+			t = canonical(t, CANFLAG_NORESTART);
 			name = vsfmt(name, 0, "%s/%s%s", t, namprt(bw->b->name), simple_backup_suffix);
 		} else {
 			name = vsfmt(name, 0, "%s%s", bw->b->name, simple_backup_suffix);
@@ -568,7 +568,7 @@ int usave(W *w, int k)
 	
 	WIND_BW(bw, w);
 	s = ask(w, joe_gettext(_("Name of file to save (%{help} for help): ")), &filehist, "Names", cmplt_file_out,
-	        locale_map, bw->b->name ? 1 : 7, 0, bw->b->name);
+	        locale_map, bw->b->name ? PWFLAG_FILENAME : (PWFLAG_FILENAME | PWFLAG_SEED_CD | PWFLAG_UPDATE_CD), 0, bw->b->name);
 	
 	if (s) {
 #ifdef JOEWIN
@@ -599,7 +599,7 @@ int ublksave(W *w, int k)
 	WIND_BW(bw, w);
 	if (markb && markk && markb->b == markk->b && (markk->byte - markb->byte) > 0 && (!square || piscol(markk) > piscol(markb))) {
 		char *s = ask(w, joe_gettext(_("Name of file to write (%{abort} to abort): ")), &filehist, "Names", cmplt_file_out,
-			      locale_map, 3, 0, bw->b->name);
+			      locale_map, (PWFLAG_FILENAME | PWFLAG_UPDATE_CD), 0, bw->b->name);
 		if (s) {
 #ifdef JOEWIN
 			s = dequotevs(s);
@@ -660,7 +660,7 @@ static int doedit(W *w,int c,void *obj)
 		object = bw->object;
 		w = bw->parent;
 		bwrm(bw);
-		w->object = (void *) (bw = bwmk(w, b, 0, NULL));
+		w->object = (void *) (bw = bwmk(w, b, 0));
 		/* Propagate current directory to newly loaded buffer */
 		if (!b->current_dir)
 			b->current_dir = current_dir;
@@ -714,7 +714,7 @@ static int doedit(W *w,int c,void *obj)
 		object = bw->object;
 		w = bw->parent;
 		bwrm(bw);
-		w->object = (void *) (bw = bwmk(w, b, 0, NULL));
+		w->object = (void *) (bw = bwmk(w, b, 0));
 		wredraw(bw->parent);
 		bw->object = object;
 		if (er == -1 && bw->o.mnew) {
@@ -757,7 +757,7 @@ int okrepl(BW *bw)
 int uedit(W *w, int k)
 {
 	char *s = ask(w, joe_gettext(_("Name of file to edit (%{help} for help): ")), &filehist,
-	              "Names", cmplt_file_in, locale_map, 7, 0, NULL);
+	              "Names", cmplt_file_in, locale_map, (PWFLAG_FILENAME | PWFLAG_SEED_CD | PWFLAG_UPDATE_CD), 0, NULL);
 	if (s) {
 		B *b;
 
@@ -787,7 +787,7 @@ int usetcd(W *w, int k)
 	char *s;
 	WIND_BW(bw, w);
 
-	s = ask(w, joe_gettext(_("Set current directory (%{abort} to abort): ")), &filehist, "Names", cmplt_file, locale_map, 7, 0, NULL);
+	s = ask(w, joe_gettext(_("Set current directory (%{abort} to abort): ")), &filehist, "Names", cmplt_file, locale_map, (PWFLAG_FILENAME | PWFLAG_SEED_CD | PWFLAG_UPDATE_CD), 0, NULL);
 	if (!s)
 		return -1;
 	
@@ -809,7 +809,7 @@ int doswitch(W *w, char *s)
 int uswitch(W *w, int k)
 {
 	char *s = ask(w, joe_gettext(_("Name of buffer to edit (%{abort} to abort): ")), &filehist,
-	              "Names", cmplt_file_in, locale_map, 1, 0, NULL);
+	              "Names", cmplt_file_in, locale_map, PWFLAG_FILENAME, 0, NULL);
 	if(s) {
 		return doswitch(w, s);
 	} else {
@@ -901,7 +901,7 @@ int uscratch(W *w, int k)
 	object = bw->object;
 	w = bw->parent;
 	bwrm(bw);
-	w->object = (void *) (bw = bwmk(w, b, 0, NULL));
+	w->object = (void *) (bw = bwmk(w, b, 0));
 	wredraw(bw->parent);
 	bw->object = object;
 
@@ -966,7 +966,7 @@ int uscratch_push(W *w, int k)
 	object = bw->object;
 	w = bw->parent;
 	bwrm(bw);
-	w->object = (void *) (bw = bwmk(w, b, 0, NULL));
+	w->object = (void *) (bw = bwmk(w, b, 0));
 	wredraw(bw->parent);
 	bw->object = object;
 	
@@ -1006,7 +1006,7 @@ static int dorepl(W *w, char *s, void *obj)
 		orphit(bw);
 	}
 	bwrm(bw);
-	w->object = (void *) (bw = bwmk(w, b, 0, NULL));
+	w->object = (void *) (bw = bwmk(w, b, 0));
 	/* Propagate current directory into new buffer */
 	if (!b->current_dir) {
 		b->current_dir = current_dir;
@@ -1051,7 +1051,7 @@ int get_buffer_in_window(BW *bw, B *b)
 		orphit(bw);
 	}
 	bwrm(bw);
-	w->object = (void *) (bw = bwmk(w, b, 0, NULL));
+	w->object = (void *) (bw = bwmk(w, b, 0));
 	wredraw(bw->parent);
 	bw->object = object;
 #ifdef JOEWIN
@@ -1124,7 +1124,7 @@ int uexsve(W *w, int k)
 		return dosave1(w, vsncpy(NULL, 0, sz(bw->b->name)), mksavereq(exdone,NULL,NULL,0,0));
 	} else {
 		char *s = ask(w, joe_gettext(_("Name of file to save (%{help} for help): ")), &filehist,
-			      "Names", cmplt_file_out, locale_map, 1, 0, bw->b->name);
+			      "Names", cmplt_file_out, locale_map, PWFLAG_FILENAME, 0, bw->b->name);
 		if (s) {
 #ifdef JOEWIN
 			s = dequotevs(s);
@@ -1144,7 +1144,7 @@ int uask(W *w, int k)
 	BW *bw;
 	WIND_BW(bw, w);
 	
-	if (bw->b->count == 1 && bw->b->changed && !bw->b->scratch) {
+	if (/* bw->b->count == 1 && */ bw->b->changed && !bw->b->scratch) {
 		for (;;) {
 			int c = query(w, sz(joe_gettext(_("Save changes to this file (y,n,%{abort})? "))), 0);
 			/* what happens when ^C is hit? */
@@ -1201,14 +1201,14 @@ int ulose(W *w, int k)
 					   any prompt windows? */
 
 					bwrm(tbw);
-					w->object = (void *) (tbw = bwmk(w, new_b, 0, NULL));
+					w->object = (void *) (tbw = bwmk(w, new_b, 0));
 					wredraw(w);
 					tbw->object = obj;
 				} else {
 					BW *tbw = (BW *)w->object;
 					void *obj = tbw->object;
 					bwrm(tbw);
-					w->object = (void *) (tbw = bwmk(w, bfind(""), 0, NULL));
+					w->object = (void *) (tbw = bwmk(w, bfind(""), 0));
 					wredraw(w);
 					tbw->object = obj;
 					if (tbw->o.mnew)
@@ -1249,7 +1249,7 @@ static int doquerysave(W *w,int c,void *obj)
 			return dosave1(w, vsncpy(NULL,0,sz(bw->b->name)), req);
 		else {
 			char *s = ask(w, joe_gettext(_("Name of file to save (%{help} for help): ")),
-			              &filehist, "Names", cmplt_file_out, locale_map, 7, 0, NULL);
+			              &filehist, "Names", cmplt_file_out, locale_map, (PWFLAG_FILENAME | PWFLAG_SEED_CD | PWFLAG_UPDATE_CD), 0, NULL);
 
 			if (s) {
 #ifdef JOEWIN

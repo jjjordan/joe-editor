@@ -11,6 +11,10 @@
 #include <pwd.h>
 #endif
 
+#ifdef HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
 #ifndef S_ISLNK
 #ifdef S_IFLNK
 #define S_ISLNK(n) (((n) & (S_IFMT)) == (S_IFLNK))
@@ -292,6 +296,7 @@ static B *bmkchn(H *chn, B *prop, off_t amnt, off_t nlines)
 	b->pid = 0;
 	b->out = -1;
 	b->vt = 0;
+	b->raw = 0;
 	b->db = 0;
 	b->parseone = 0;
 #ifdef JOEWIN
@@ -2576,20 +2581,58 @@ B *bread(int fi, off_t max)
 
 /* Parse file name.
  *
+ * Old:
  * Removes ',xxx,yyy' from end of name and puts their value into skip and amnt
  * Replaces ~user/ with directory of given user
  * Replaces ~/ with $HOME
  *
+ * New:
+ *
+ * mode:
+ *  0 = normal
+ *  1 = pipe to/from program
+ *  2 = stdin / stdout
+ *  3 = append
+ *
  * Returns new variable length string.
  */
-char *parsens(const char *s, off_t *skip, off_t *amnt)
+char *parsens(const char *s, off_t *skip, off_t *amnt, int *mode)
 {
-	char *n = vsncpy(NULL, 0, sz(s));
+	char *n;
 	ptrdiff_t x;
 
 	*skip = 0;
 	*amnt = MAXOFF;
+	*mode = 0;
+
+	for (;;) {
+		if (!parse_field(&s, "-append")) {
+			parse_ws(&s, ' ');
+			*mode = 3;
+		} else if (!parse_field(&s, "-start") && parse_ws(&s, ' ') && !parse_off_t(&s, skip)) {
+			parse_ws(&s, ' ');
+		} else if (!parse_field(&s, "-size") && parse_ws(&s, ' ') && !parse_off_t(&s, amnt)) {
+			parse_ws(&s, ' ');
+		} else if (s[0] == '-' && !s[1]) {
+			++s;
+			*mode = 2;
+		} else if (!parse_field(&s, "--")) { /* Stop interpreting */
+			if (s[0] == ' ')
+				++s;
+			break;
+		} else if (!parse_field(&s, "-popen")) {
+			parse_ws(&s, ' ');
+			*mode = 1;
+		} else
+			break;
+	}
+
+	n = vsncpy(NULL, 0, sz(s));
+
+#if 0
 	x = obj_len(n) - 1;
+
+	/* Old way */
 	if (x > 0 && n[x] >= '0' && n[x] <= '9') {
 		for (x = obj_len(n) - 1; x > 0 && ((n[x] >= '0' && n[x] <= '9') || n[x] == 'x' || n[x] == 'X'); --x) ;
 		if (n[x] == ',' && x && n[x-1] != '\\') {
@@ -2608,6 +2651,8 @@ char *parsens(const char *s, off_t *skip, off_t *amnt)
 			}
 		}
 	}
+#endif
+
 	/* Don't do this here: do it in prompt buffer instead, so we're just like
 	   the shell doing it on the command line. */
 	/* n = canonical(n); */
@@ -2616,21 +2661,22 @@ char *parsens(const char *s, off_t *skip, off_t *amnt)
 
 /* Canonicalize file name: do ~ expansion */
 
-char *canonical(char *n)
+char *canonical(char *n, int flags)
 {
 	ptrdiff_t y = 0;
-#ifndef JOEWIN
 	ptrdiff_t x;
 	char *s;
-	for (y = zlen(n); ; --y)
-		if (y <= 2) {
-			y = 0;
-			break;
-		} else if (n[y-2] == '/' && (n[y-1] == '/' || n[y-1] == '~')) {
-			y -= 1;
-			break;
-		}
-	
+#ifndef JOEWIN
+	if (!(flags & CANFLAG_NORESTART)) {
+		for (y = zlen(n); ; --y)
+			if (y <= 2) {
+				y = 0;
+				break;
+			} else if (ISDIRSEP(n[y-2]) && (ISDIRSEP(n[y-1]) || n[y-1] == '~')) {
+				y -= 1;
+				break;
+			}
+	}
 	if (n[y] == '~') {
 		for (x = y + 1; n[x] && n[x] != '/'; ++x) ;
 		if (n[x] == '/') {
@@ -2735,6 +2781,62 @@ s++;
         return buf;
 }
 
+/* Version of popen() that restores normal signal handling after the fork() */
+
+#ifndef JOEWIN
+
+FILE *joe_popen(const char *s, int write_mode)
+{
+	int fds[2]; /* [0] is read, [1] is write */
+
+	if (-1 == pipe(fds))
+		return 0;
+
+#ifdef HAVE_FORK
+	if (!fork())
+#else
+	if (!vfork())
+#endif
+	{
+		signrm(); /* Restore default signal handling */
+		if (write_mode) {
+			if (-1 == dup2(fds[0], 0)) _exit(1);
+		} else {
+			if (-1 == dup2(fds[1], 1)) _exit(1);
+		}
+		close(fds[0]);
+		close(fds[1]);
+		execl("/bin/sh", "/bin/sh", "-c", s, NULL);
+		_exit(0);
+	}
+	if (write_mode) {
+		close(fds[0]);
+		return fdopen(fds[1], "w");
+	} else {
+		close(fds[1]);
+		return fdopen(fds[0], "r");
+	}
+}
+
+void joe_pclose(FILE *f)
+{
+	fclose(f);
+	wait(NULL);
+}
+
+#else
+
+FILE *joe_popen(const char *s, int write_mode)
+{
+	return NULL;
+}
+
+void joe_pclose(FILE *f)
+{
+}
+
+#endif
+
 /* Load file into new buffer and return the new buffer */
 /* Returns with error set to 0 for success,
  * -1 for new file (file doesn't exist)
@@ -2748,12 +2850,15 @@ B *bload(const char *s)
 	FILE *fi = 0;
 	B *b = 0;
 	off_t skip, amnt;
+	int mode;
 	char *n;
 	int nowrite = 0;
 	P *p;
 	int x;
 	time_t mod_time = 0;
 	struct stat sbuf;
+
+	berror = 0;
 
 	if (!s || !s[0]) {
 		berror = -1;
@@ -2764,17 +2869,17 @@ B *bload(const char *s)
 		return b;
 	}
 
-	n = parsens(s, &skip, &amnt);
+	n = parsens(s, &skip, &amnt, &mode);
 
 	/* Open file or stream */
 #if !defined(__MSDOS__) && !defined(JOEWIN)
-	if (n[0] == '!') {
+	if (mode == 1) { /* popen */
 		nescape(maint->t);
 		ttclsn();
-		fi = popen(n + 1, "r");
+		fi = joe_popen(n, 0);
 	} else
 #endif
-	if (!zcmp(n, "-")) {
+	if (mode == 2) { /* Read from stdin */
 #ifdef junk
 		FILE *f;
 		struct stat y;
@@ -2791,10 +2896,10 @@ B *bload(const char *s)
 		/* Now we always just create an empty buffer for "-" */
 		b = bmk(NULL);
 		goto empty;
-	} else {
-		if (access(dequote(n), W_OK))
+	} else { /* Regular file */
+		if (access(n, W_OK))
 			nowrite = 1;
-		fi = fopen(dequote(n), "r");
+		fi = fopen(n, "r");
 		if (!fi)
 			nowrite = 0;
 		if (fi) {
@@ -2849,15 +2954,15 @@ B *bload(const char *s)
 	/* Close stream */
 err:
 #if !defined(__MSDOS__) && !defined(JOEWIN)
-	if (s[0] == '!')
-		pclose(fi);
+	if (mode == 1) /* popen */
+		joe_pclose(fi);
 	else
 #endif
-	if (zcmp(n, "-"))
+	if (mode != 2) /* stdin */
 		fclose(fi);
 
 opnerr:
-	if (s[0] == '!') {
+	if (mode == 1) { /* popen */
 		ttopnn();
 		nreturn(maint->t);
 	}
@@ -2866,10 +2971,10 @@ opnerr:
 	b->name = joesep(zdup(s));
 
 	/* Set flags */
-	if (berror || s[0] == '!' || skip || amnt != MAXOFF) {
+	if (berror || mode == 1 || skip || amnt != MAXOFF) { /* popen */
 		b->backup = 1;
 		b->changed = 0;
-	} else if (!zcmp(n, "-")) {
+	} else if (mode == 2) { /* stdin */
 		b->backup = 1;
 		b->changed = 1;
 	} else {
@@ -3193,36 +3298,33 @@ int break_symlinks; /* Set to break symbolic links and hard links on writes */
 int bsave(P *p, const char *as, off_t size, int flag)
 {
 	struct stat sbuf;
-	const char* filename = as;
 	int have_stat = 0;
 	FILE *f;
 	off_t skip, amnt;
+	int mode;
 	int norm = 0;
-	char *s = parsens(as, &skip, &amnt);
+	char *s = parsens(as, &skip, &amnt, &mode);
 
 	if (amnt < size)
 		size = amnt;
 
 #if !defined(__MSDOS__) && !defined(JOEWIN)
-	if (s[0] == '!') {
+	if (mode == 1) { /* Shell */
 		nescape(maint->t);
 		ttclsn();
-		f = popen(s + 1, "w");
+		f = joe_popen(s, 1);
 	} else
 #endif
-	if (s[0] == '>' && s[1] == '>') {
-		filename = dequote(s + 2);
-		f = fopen(filename, "a");
-	} else if (!zcmp(s, "-")) {
+	if (mode == 3) /* Append */
+		f = fopen(s, "a");
+	else if (mode == 2) { /* stdout */
 		nescape(maint->t);
 		ttclsn();
 		f = stdout;
-		filename = NULL;
-	} else if (skip || amnt != MAXOFF) {
-		filename = dequote(s);
-		f = fopen(filename, "r+");
-	} else {
-		have_stat = !stat(dequote(s), &sbuf);
+	} else if (skip || amnt != MAXOFF) /* Partial write */
+		f = fopen(s, "r+");
+	else { /* Full write */
+		have_stat = !stat(s, &sbuf);
 		if (!have_stat)
 			sbuf.st_mode = 0666;
 		/* Normal file save */
@@ -3230,7 +3332,7 @@ int bsave(P *p, const char *as, off_t size, int flag)
 			struct stat lsbuf;
 
 			/* Try to copy permissions */
-			if (!lstat(dequote(s),&lsbuf)) {
+			if (!lstat(s,&lsbuf)) {
 				int g;
 				if (!break_symlinks && S_ISLNK(lsbuf.st_mode))
 					goto nobreak;
@@ -3240,32 +3342,32 @@ int bsave(P *p, const char *as, off_t size, int flag)
 					selinux_enabled = (is_selinux_enabled() > 0);
 				
 				if (selinux_enabled) {
-					if (getfilecon(dequote(s), &se) < 0) {
+					if (getfilecon(s, &se) < 0) {
 						berror = -4;
 						goto opnerr;
 					}
 				}
 #endif
+				unlink(s);
 #ifndef JOEWIN
-				g = creat(dequote(s), sbuf.st_mode & ~(unsigned)(S_ISUID | S_ISGID));
+				g = creat(s, sbuf.st_mode & ~(unsigned)(S_ISUID | S_ISGID));
 #else
-				g = creat(dequote(s), sbuf.st_mode);
+				g = creat(s, sbuf.st_mode);
 #endif
 #ifdef WITH_SELINUX
 				if (selinux_enabled) {
-					setfilecon(dequote(s), &se);
+					setfilecon(s, &se);
 					freecon(se);
 				}
 #endif
 				close(g);
 				nobreak:;
 			} else {
-				unlink(dequote(s));
+				unlink(s);
 			}
 		}
 
-		filename = (char *)dequote(s);
-		f = fopen(filename, "w");
+		f = fopen(s, "w");
 		norm = 1;
 	}
 	joesep(s);
@@ -3303,30 +3405,30 @@ int bsave(P *p, const char *as, off_t size, int flag)
 #ifndef JOEWIN
 		fchmod(fileno(f), sbuf.st_mode);
 #else
-		chmod(filename, sbuf.st_mode & (S_IREAD | S_IWRITE));
+		chmod(s, sbuf.st_mode & (S_IREAD | S_IWRITE));
 #endif
 	}
 
 err:
 #if !defined(__MSDOS__) && !defined(JOEWIN)
-	if (s[0] == '!')
-		pclose(f);
+	if (mode == 1) /* popen */
+		joe_pclose(f);
 	else
 #endif
-	if (zcmp(s, "-"))
-		fclose(f);
-	else
+	if (mode == 2) /* stdout */
 		fflush(f);
+	else
+		fclose(f);
 
 	/* Update original date of file */
 	/* If it's not named, it's about to be */
 	if (!berror && norm && flag && (!p->b->name || flag == 2 || !filecmp(s,p->b->name))) {
-		if (!stat(dequote(s),&sbuf))
+		if (!stat(s, &sbuf))
 			p->b->mod_time = sbuf.st_mtime;
 	}
 
 opnerr:
-	if (s[0] == '!' || !zcmp(s,"-")) {
+	if (mode == 1 || mode == 2) {
 		ttopnn();
 		nreturn(maint->t);
 	}
