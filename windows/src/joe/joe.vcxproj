@@ -118,6 +118,10 @@
     <ClCompile Include="$(JoeExternalSrcDir)\kbd.c" />
     <ClCompile Include="$(JoeExternalSrcDir)\lattr.c" />
     <ClCompile Include="$(JoeExternalSrcDir)\libcoro.c" />
+    <MASM Condition="'$(Platform)' == 'x64'" Include="$(JoeExternalSrcDir)\libcoro_amd64.asm" />
+    <MASM Condition="'$(Platform)' == 'Win32'" Include="$(JoeExternalSrcDir)\libcoro_x86.asm">
+      <UseSafeExceptionHandlers>true</UseSafeExceptionHandlers>
+    </MASM>
     <ClCompile Include="$(JoeExternalSrcDir)\macro.c" />
     <ClCompile Include="$(JoeExternalSrcDir)\main.c" />
     <ClCompile Include="$(JoeExternalSrcDir)\menu.c" />
@@ -146,7 +150,7 @@
     <ClCompile Include="$(JoeExternalSrcDir)\uisrch.c" />
     <ClCompile Include="$(JoeExternalSrcDir)\umath.c" />
     <ClCompile Include="$(JoeExternalSrcDir)\undo.c" />
-    <ClCompile Include="$(JoeExternalSrcDir)\unicat.c" />
+    <ClCompile Include="$(JoeExternalSrcDir)\unicat-10.0.0.c" />
     <ClCompile Include="$(JoeExternalSrcDir)\unicode.c" />
     <ClCompile Include="$(JoeExternalSrcDir)\usearch.c" />
     <ClCompile Include="$(JoeExternalSrcDir)\ushell.c" />

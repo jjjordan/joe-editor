@@ -4,7 +4,7 @@
 AC_PREREQ(2.54)
 
 #### Here's the only place where to change version number ####
-AC_INIT(joe, 4.5)
+AC_INIT(joe, 4.6)
 AC_CONFIG_SRCDIR([joe/b.c])
 
 AC_CANONICAL_BUILD
@@ -48,6 +48,14 @@ AC_ARG_ENABLE(termcap,
 
 if test "$termcap" = "yes"; then
 	search_libs="$search_libs termcap"
+fi
+
+# Select Unicode version
+AC_ARG_VAR(UNICODE_VERSION,
+[  Select Unicode version: 8.0.0, 9.0.0 or 10.0.0  Default is 9.0.0 ])
+
+if test "$UNICODE_VERSION" = ""; then
+	UNICODE_VERSION=9.0.0
 fi
 
 AC_SEARCH_LIBS(openpty, util, AC_DEFINE_UNQUOTED(HAVE_OPENPTY, 1, [If we have BSD function openpty()]))
@@ -191,5 +199,5 @@ AC_CHECK_PROG(SPELL,aspell,aspell,ispell)
 
 AC_CONFIG_FILES([Makefile joe/Makefile joe/util/Makefile rc/Makefile
 man/Makefile man/ru/Makefile syntax/Makefile po/Makefile colors/Makefile
-charmaps/klingon])
+charmaps/klingon desktop/Makefile])
 AC_OUTPUT
