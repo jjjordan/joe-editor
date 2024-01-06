@@ -1064,6 +1064,7 @@ BW *bwmk(W *window, B *b, int prompt)
 	w->top_changed = 1;
 	w->db = 0;
 	w->shell_flag = 0;
+	w->pasting = 0;
 	return w;
 }
 
